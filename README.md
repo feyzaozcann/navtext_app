@@ -34,21 +34,11 @@ npm run dev
 
 Open http://localhost:5173
 
-## Deploy
+# NAVTEX Monitor
 
-### Backend → Render.com (free)
-1. New Web Service → connect GitHub repo
-2. Root Directory: `backend`
-3. Build: `mvn clean package -DskipTests`
-4. Start: `java -jar target/navtex-backend-1.0.0.jar`
-5. Copy the Render URL (e.g. `https://navtex-backend.onrender.com`)
+Live Demo: [https://navtextapp.vercel.app/](https://navtextapp.vercel.app/)
 
-### Frontend → Vercel (free)
-1. New Project → connect GitHub repo
-2. Root Directory: `frontend`
-3. Add Environment Variable: `VITE_API_URL` = your Render URL + `/api`
-4. Update `frontend/vercel.json` with your Render URL
-5. Deploy → get public link
+This project's frontend is deployed on Vercel and the backend is running on Render.
 
 ## API Endpoints
 - `GET /api/health` — health check
