@@ -36,7 +36,7 @@ Open http://localhost:5173
 
 # NAVTEX Monitor
 
-Live Demo: [https://senin-vercel-linkin.vercel.app](https://senin-vercel-linkin.vercel.app)
+Live Demo: [https://navtextapp.vercel.app/](https://navtextapp.vercel.app/)
 
 This project's frontend is deployed on Vercel and the backend is running on Render.
 
