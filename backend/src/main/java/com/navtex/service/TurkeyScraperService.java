@@ -46,28 +46,6 @@ public class TurkeyScraperService {
         return "A";
     }
 
-    private List<NavtexMessage> scrapeCity(String cityKey, String stationName) {
-        List<NavtexMessage> messages = new ArrayList<>();
-        String today = LocalDate.now().format(DateTimeFormatter.ofPattern("dd.MM.yyyy"));
-        try {
-            Document doc = Jsoup.connect(BASE_URL)
-                    .userAgent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36")
-                    .header("Accept", "text/html,application/xhtml+xml")
-                    .header("Accept-Language", "tr-TR,tr;q=0.9")
-                    .header("Referer", BASE_URL)
-                    .data("City", cityKey)
-                    .data("State", "2")
-                    .data("Date", today)
-                    .timeout(20000)
-                    .post();
-            messages.addAll(parseTable(doc, stationName));
-            log.info(cityKey + " -> " + messages.size() + " messages");
-        } catch (Exception e) {
-            log.warning("POST error [" + cityKey + "]: " + e.getMessage());
-        }
-        return messages;
-    }
-
     private List<NavtexMessage> parseTable(Document doc, String stationName) {
         List<NavtexMessage> messages = new ArrayList<>();
         Elements rows = doc.select("table tbody tr");
@@ -93,9 +71,83 @@ public class TurkeyScraperService {
         return messages;
     }
 
+    private Document fetchPage(String cityKey, int page, String today) throws Exception {
+        if (page == 1) {
+            return Jsoup.connect(BASE_URL)
+                    .userAgent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36")
+                    .header("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8")
+                    .header("Accept-Language", "tr-TR,tr;q=0.9,en-US;q=0.8,en;q=0.7")
+                    .header("Connection", "keep-alive")
+                    .header("Referer", "https://www.kiyiemniyeti.gov.tr/")
+                    .header("Origin", "https://www.kiyiemniyeti.gov.tr")
+                    .header("Cache-Control", "no-cache")
+                    .data("City", cityKey)
+                    .data("State", "2")
+                    .data("Date", today)
+                    .followRedirects(true)
+                    .timeout(20000)
+                    .post();
+        } else {
+            String url = BASE_URL + "?City=" + cityKey + "&page=" + page + "&State=2";
+            return Jsoup.connect(url)
+                    .userAgent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36")
+                    .header("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8")
+                    .header("Accept-Language", "tr-TR,tr;q=0.9,en-US;q=0.8,en;q=0.7")
+                    .header("Connection", "keep-alive")
+                    .header("Referer", BASE_URL)
+                    .followRedirects(true)
+                    .timeout(20000)
+                    .get();
+        }
+    }
+
+    private List<NavtexMessage> scrapeCity(String cityKey, String stationName) {
+        List<NavtexMessage> messages = new ArrayList<>();
+        String today = LocalDate.now().format(DateTimeFormatter.ofPattern("dd.MM.yyyy"));
+        int page = 1;
+        int maxPages = 20; // ileride 4, 5, 6. sayfa eklenirse de çeker
+
+        while (page <= maxPages) {
+            try {
+                Document doc = fetchPage(cityKey, page, today);
+                List<NavtexMessage> pageMsgs = parseTable(doc, stationName);
+
+                if (pageMsgs.isEmpty()) {
+                    log.info(cityKey + " page " + page + " -> empty, stopping");
+                    break;
+                }
+
+                messages.addAll(pageMsgs);
+                log.info(cityKey + " page " + page + " -> " + pageMsgs.size() + " messages");
+
+                // Sonraki sayfa linki var mı?
+                boolean hasNextPage = !doc.select(
+                    "#Pagination a[href*='page=" + (page + 1) + "']"
+                ).isEmpty();
+
+                if (!hasNextPage) {
+                    log.info(cityKey + " -> no more pages after page " + page);
+                    break;
+                }
+
+                page++;
+                Thread.sleep(400); // siteye yük bindirme
+
+            } catch (Exception e) {
+                log.warning("Page " + page + " error [" + cityKey + "]: " + e.getMessage());
+                break;
+            }
+        }
+
+        log.info(cityKey + " total -> " + messages.size() + " messages (" + page + " pages)");
+        return messages;
+    }
+
     public List<NavtexMessage> fetchMessages() {
         List<NavtexMessage> all = new ArrayList<>();
-        for (String[] city : CITIES) all.addAll(scrapeCity(city[0], city[1]));
+        for (String[] city : CITIES) {
+            all.addAll(scrapeCity(city[0], city[1]));
+        }
         log.info("Total Turkey messages: " + all.size());
         return all;
     }

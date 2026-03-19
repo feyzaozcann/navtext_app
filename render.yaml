@@ -1,9 +1,0 @@
-services:
-  - type: web
-    name: navtex-backend
-    runtime: java
-    buildCommand: cd backend && mvn clean package -DskipTests
-    startCommand: java -jar backend/target/navtex-backend-1.0.0.jar
-    envVars:
-      - key: PORT
-        value: 8080

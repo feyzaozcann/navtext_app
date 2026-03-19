@@ -36,6 +36,11 @@ public class NavtexService {
         fetchSafe("Turkey",         turkeyScraper::fetchMessages, all);
         fetchSafe("United Kingdom", ukScraper::fetchMessages,     all);
         fetchSafe("Sweden",         swedenScraper::fetchMessages,  all);
+        
+        all.sort((a, b) -> {
+        return parseDate(b.getPublishedAt()).compareTo(parseDate(a.getPublishedAt()));
+        });
+
         log.info("Total messages fetched: " + all.size());
         return all;
     }
@@ -64,4 +69,32 @@ public class NavtexService {
     public void refreshCache() {
         log.info("Cache cleared — will refresh on next request");
     }
+
+    private java.time.LocalDateTime parseDate(String dateStr) {
+    if (dateStr == null || dateStr.isBlank()) return java.time.LocalDateTime.MIN;
+    String[] formats = {
+        "d.MM.yyyy HH:mm:ss",
+        "dd.MM.yyyy HH:mm:ss",
+        "d.MM.yyyy",
+        "dd.MM.yyyy",
+        "dd MMM yyyy HH:mm",
+        "d MMM yyyy",
+        "yyyyMMdd"
+    };
+    for (String fmt : formats) {
+        try {
+            return java.time.LocalDateTime.parse(
+                dateStr.trim(),
+                java.time.format.DateTimeFormatter.ofPattern(fmt)
+            );
+        } catch (Exception ignored) {}
+        try {
+            return java.time.LocalDate.parse(
+                dateStr.trim().split(" ")[0],
+                java.time.format.DateTimeFormatter.ofPattern(fmt)
+            ).atStartOfDay();
+        } catch (Exception ignored) {}
+    }
+    return java.time.LocalDateTime.MIN;
+}
 }
